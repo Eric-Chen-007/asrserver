@@ -23,6 +23,7 @@ dependencies = [
   "loguru==0.7.2",
   "rich>=13.9,<14",
   "setuptools>=70.0.0,<81",
+  "silero-vad==6.2.3; sys_platform == 'darwin'",
   "torch==2.10.0; sys_platform == 'darwin'",
   "torchaudio==2.10.0; sys_platform == 'darwin'",
   "torchvision==0.25.0; sys_platform == 'darwin'",
@@ -39,11 +40,13 @@ cuda = [
   "flashinfer-cubin==0.6.18.post1; sys_platform == 'linux' and platform_machine == 'x86_64'",
   "nvidia-nccl-cu13==2.29.7; sys_platform == 'linux' and platform_machine == 'x86_64'",
   "vllm[audio]==0.30.0; sys_platform == 'linux' and platform_machine == 'x86_64'",
+  "silero-vad==6.2.3; sys_platform == 'linux' and platform_machine == 'x86_64'",
 ]
 cpu = [
   "torch==2.13.0; sys_platform == 'linux'",
   "torchaudio==2.11.0; sys_platform == 'linux'",
   "torchvision==0.28.0; sys_platform == 'linux'",
+  "silero-vad==6.2.3; sys_platform == 'linux'",
 ]
 
 [dependency-groups]

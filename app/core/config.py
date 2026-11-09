@@ -51,6 +51,8 @@ class Settings:
     )
     R2T2_URL: str = ""
     R2T2_INTERNAL_TOKEN: str = ""
+    # 实时转写：说话后静音达到该毫秒数自动结束，0 表示关闭；客户端可按会话覆盖
+    REALTIME_AUTO_STOP_MS: int = 0
     # 音频处理配置
     MAX_AUDIO_SIZE: int = 2048 * 1024 * 1024  # 2GB
 
@@ -96,6 +98,11 @@ class Settings:
         )
         self.R2T2_URL = os.getenv("R2T2_URL", "").strip().rstrip("/")
         self.R2T2_INTERNAL_TOKEN = os.getenv("R2T2_INTERNAL_TOKEN", "").strip()
+        self.REALTIME_AUTO_STOP_MS = int(
+            os.getenv("REALTIME_AUTO_STOP_MS", str(self.REALTIME_AUTO_STOP_MS))
+        )
+        if not 0 <= self.REALTIME_AUTO_STOP_MS <= 60000:
+            raise ValueError("REALTIME_AUTO_STOP_MS must be between 0 and 60000")
 
         # 音频处理配置
         # 支持简化格式：纯数字表示MB，或带单位（如 2048MB, 2GB）

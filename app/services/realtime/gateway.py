@@ -5,8 +5,9 @@ import logging
 from contextlib import suppress
 
 from fastapi import WebSocket, WebSocketDisconnect
-from pydantic import ValidationError
+from pydantic import Field, ValidationError
 
+from app.core.config import settings
 from app.core.security import validate_websocket_token
 
 from .client import open_stream, receive_event
@@ -19,8 +20,16 @@ from .protocol import (
     validate_pcm,
 )
 from .speakers import SpeakerStream
+from .vad import open_silence_stop
 
 logger = logging.getLogger(__name__)
+
+
+class GatewayStreamConfig(StreamConfig):
+    # Speech followed by this much Silero non-speech ends the stream; 0 disables.
+    auto_stop_silence_ms: int = Field(
+        default_factory=lambda: settings.REALTIME_AUTO_STOP_MS, ge=0, le=60000
+    )
 
 
 async def handle_stream(websocket: WebSocket):
@@ -30,11 +39,19 @@ async def handle_stream(websocket: WebSocket):
         return
     await websocket.accept()
     try:
-        config = StreamConfig.model_validate(
+        config = GatewayStreamConfig.model_validate(
             await asyncio.wait_for(websocket.receive_json(), 10)
         )
         speakers = SpeakerStream()
-        async with open_stream(config) as (upstream, ready):
+        silence = (
+            await open_silence_stop(config.auto_stop_silence_ms)
+            if config.auto_stop_silence_ms
+            else None
+        )
+        async with open_stream(StreamConfig(context=config.context)) as (
+            upstream,
+            ready,
+        ):
             lock = asyncio.Lock()
 
             async def send(*events):
@@ -42,15 +59,23 @@ async def handle_stream(websocket: WebSocket):
                     for event in events:
                         await asyncio.wait_for(websocket.send_json(event), 5)
 
-            await send(dict(ready, speaker_diarization=speakers.model is not None))
+            await send(
+                dict(
+                    ready,
+                    speaker_diarization=speakers.model is not None,
+                    auto_stop_silence_ms=config.auto_stop_silence_ms if silence else 0,
+                )
+            )
 
             async def send_audio():
                 samples = 0
-                ended = False
+                ended = auto_stopped = False
                 while True:
                     message = await asyncio.wait_for(websocket.receive(), 30)
                     if message["type"] == "websocket.disconnect":
                         return
+                    if auto_stopped:
+                        continue  # Sent before the client saw auto_stop.
                     if ended:
                         raise StreamError(
                             "session_finished", "No messages are allowed after end"
@@ -69,6 +94,15 @@ async def handle_stream(websocket: WebSocket):
                         await asyncio.wait_for(upstream.send(data), 5)
                         speakers.feed(data)
                         await send(*await speakers.advance())
+                        if silence and await silence.feed(data):
+                            ended = auto_stopped = True
+                            await send(
+                                {
+                                    "auto_stop": "silence",
+                                    "audio_ms": samples * 1000 // SAMPLE_RATE,
+                                }
+                            )
+                            await asyncio.wait_for(upstream.send("end"), 5)
                     elif message.get("text") == "end":
                         ended = True
                         await asyncio.wait_for(upstream.send("end"), 5)

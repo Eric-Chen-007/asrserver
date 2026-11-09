@@ -48,6 +48,7 @@ IMAGE=quantatrisk/asrserve:cpu ./scripts/prepare-models.sh   # 用 :cpu 镜像
 | `R2T2_GPU_MEMORY_UTILIZATION` | `0.30` | R2T2 显存比例 |
 | `FORCED_ALIGNER_GPU_MEMORY_UTILIZATION` | `0.15` | 对齐模型显存比例 |
 | `R2T2_CHUNK_SECONDS` | `0.64` | GPU 和 CPU 实时解码间隔（秒），允许范围 0.08–2 |
+| `REALTIME_AUTO_STOP_MS` | `0` | 实时转写说话后静音达到该毫秒数自动结束，`0` 关闭，见[实时转写](realtime.md#停顿自动结束) |
 | `R2T2_CPU_THREADS` | `8` | Rust CPU 线程 |
 | `OPENBLAS_NUM_THREADS` | GPU `4`、CPU `8` | 矩阵运算线程 |
 

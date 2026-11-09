@@ -5,6 +5,7 @@ from pathlib import Path
 from fastapi import APIRouter, Request, WebSocket
 from fastapi.responses import FileResponse, JSONResponse
 
+from app.core.config import settings
 from app.core.security import validate_token
 from app.services.realtime.client import get_capabilities
 from app.services.realtime.gateway import handle_stream
@@ -43,8 +44,12 @@ async def config(request: Request):
             status_code=401,
         )
     try:
-        # The gateway, not the private engine, adds Nemotron utterance labels.
-        return dict(await get_capabilities(), speaker_diarization=True)
+        # The gateway, not the private engine, adds speaker labels and auto stop.
+        return dict(
+            await get_capabilities(),
+            speaker_diarization=True,
+            auto_stop_silence_ms=settings.REALTIME_AUTO_STOP_MS,
+        )
     except StreamError as error:
         return JSONResponse(
             {"error": str(error), "code": error.code}, status_code=error.status

@@ -70,7 +70,13 @@ $('start').onclick = async () => {
         };
         context.createMediaStreamSource(stream).connect(node);
         node.connect(context.destination);
-        $('stop').disabled = false; $('status').textContent = '正在聆听 · 自动识别中英文';
+        $('stop').disabled = false;
+        $('status').textContent = '正在聆听 · 自动识别中英文' + (event.auto_stop_silence_ms ? ` · 停顿 ${event.auto_stop_silence_ms / 1000} 秒自动结束` : '');
+      } else if (event.auto_stop) {
+        stopping = true; $('stop').disabled = true; $('status').textContent = '检测到停顿，正在补齐末尾文字…';
+        if (node) node.port.onmessage = null;
+        await cleanup(false);
+        timer = setTimeout(() => fail('转写结束超时，请重试。'), 30000);
       } else {
         if (event.delta) $('text').append(document.createTextNode(event.delta));
         if (event.done) {
